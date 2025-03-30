@@ -1,0 +1,39 @@
+/* General Page Styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    text-align: center;
+    padding: 50px;
+}
+
+/* Login Form */
+form {
+    background: white;
+    padding: 20px;
+    width: 300px;
+    margin: auto;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Input Fields */
+input, select, button {
+    display: block;
+    width: 90%;
+    margin: 10px auto;
+    padding: 10px;
+    font-size: 16px;
+}
+
+/* Button Styling */
+button {
+    background: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover {
+    background: #0056b3;
+}

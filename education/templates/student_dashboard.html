@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { 
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .emotion-feed {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #e2e3e5; color: #383d41; }
+        
+        #video-container {
+            margin: 20px auto;
+            max-width: 640px;
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        #video-feed {
+            width: 100%;
+            display: block;
+        }
+        
+        .emotion-display {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .emotion-bars {
+            margin-top: 15px;
+        }
+        
+        .emotion-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .emotion-bar {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .emotion-fill {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        
+        .emotion-fill.happy { background-color: #28a745; }
+        .emotion-fill.sad { background-color: #17a2b8; }
+        .emotion-fill.angry { background-color: #dc3545; }
+        .emotion-fill.surprised { background-color: #ffc107; }
+        
+        #current-emotion {
+            font-size: 1.2em;
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+        
+        #current-emotion.happy { color: #28a745; }
+        #current-emotion.sad { color: #17a2b8; }
+        #current-emotion.angry { color: #dc3545; }
+        #current-emotion.surprised { color: #ffc107; }
+        #current-emotion.neutral { color: #6c757d; }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .meeting-info {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: 500;
+            padding: 12px 20px;
+            margin-right: 10px;
+            border-radius: 0;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            border: none;
+            color: #495057;
+        }
+        
+        .nav-tabs .nav-link.active {
+            border: none;
+            color: #2196F3;
+            border-bottom: 2px solid #2196F3;
+            margin-bottom: -2px;
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .join-meeting-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .join-meeting-form .form-control {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">Student Dashboard</h1>
+        <div id="status-message"></div>
+
+        <ul class="nav nav-tabs" id="studentTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="emotions-tab" data-bs-toggle="tab" data-bs-target="#emotions" type="button" role="tab">
+                    My Emotions
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="meetings-tab" data-bs-toggle="tab" data-bs-target="#meetings" type="button" role="tab">
+                    Join Meeting
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="studentTabContent">
+            <!-- Emotions Tab -->
+            <div class="tab-pane fade show active" id="emotions" role="tabpanel">
+                <div class="video-section">
+                    <div id="video-container">
+                        <video id="video-feed" autoplay playsinline></video>
+                    </div>
+                    
+                    <div class="controls">
+                        <button id="toggleButton" class="btn btn-primary">Start Detection</button>
+                    </div>
+                    
+                    <div id="emotion_list" class="emotion-display" style="display: none;">
+                        <h3>Current Emotion: <span id="current-emotion">Not detected</span></h3>
+                        
+                        <div class="emotion-bars">
+                            <div class="emotion-group">
+                                <div class="emotion-label">
+                                    <span>Happy</span>
+                                    <span class="emotion-percentage" id="happy_percentage">0%</span>
+                                </div>
+                                <div class="emotion-bar">
+                                    <div id="happy_score" class="emotion-fill happy"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="emotion-group">
+                                <div class="emotion-label">
+                                    <span>Sad</span>
+                                    <span class="emotion-percentage" id="sad_percentage">0%</span>
+                                </div>
+                                <div class="emotion-bar">
+                                    <div id="sad_score" class="emotion-fill sad"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="emotion-group">
+                                <div class="emotion-label">
+                                    <span>Angry</span>
+                                    <span class="emotion-percentage" id="angry_percentage">0%</span>
+                                </div>
+                                <div class="emotion-bar">
+                                    <div id="angry_score" class="emotion-fill angry"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="emotion-group">
+                                <div class="emotion-label">
+                                    <span>Surprised</span>
+                                    <span class="emotion-percentage" id="surprised_percentage">0%</span>
+                                </div>
+                                <div class="emotion-bar">
+                                    <div id="surprised_score" class="emotion-fill surprised"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Join Meeting Tab -->
+            <div class="tab-pane fade" id="meetings" role="tabpanel">
+                <div class="join-meeting-form">
+                    <h3 class="mb-4">Join a Meeting</h3>
+                    <div class="mb-3">
+                        <label for="meetingIdInput" class="form-label">Meeting ID</label>
+                        <input type="text" class="form-control" id="meetingIdInput" placeholder="Enter meeting ID">
+                    </div>
+                    <button id="joinMeetingBtn" class="btn btn-primary w-100">Join Meeting</button>
+                </div>
+
+                <div id="activeMeeting" style="display: none;">
+                    <div class="meeting-info">
+                        <h3>Current Meeting</h3>
+                        <p>Meeting ID: <span id="meeting-id">Not in a meeting</span></p>
+                        <button id="leaveMeetingBtn" class="btn btn-danger">Leave Meeting</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const socket = io();
+        let isDetecting = false;
+        let videoStream = null;
+        let lastDetectionTime = 0;
+        const DETECTION_INTERVAL = 1000;
+        let currentMeetingId = null;
+
+        // UI Elements
+        const videoContainer = document.getElementById('video-container');
+        const videoElement = document.getElementById('video-feed');
+        const emotionList = document.getElementById('emotion_list');
+        const toggleButton = document.getElementById('toggleButton');
+        const statusMessage = document.getElementById('status-message');
+        const meetingIdInput = document.getElementById('meetingIdInput');
+        const joinMeetingBtn = document.getElementById('joinMeetingBtn');
+        const activeMeeting = document.getElementById('activeMeeting');
+        const meetingIdSpan = document.getElementById('meeting-id');
+        const leaveMeetingBtn = document.getElementById('leaveMeetingBtn');
+
+        // Check if we're joining a meeting from URL
+        const urlMeetingId = '{{ meeting_id }}';
+        if (urlMeetingId) {
+            joinMeeting(urlMeetingId);
+        }
+
+        // Join meeting button click handler
+        joinMeetingBtn.addEventListener('click', () => {
+            const meetingId = meetingIdInput.value.trim();
+            if (meetingId) {
+                joinMeeting(meetingId);
+            } else {
+                showStatus('Please enter a meeting ID', 'error');
+            }
+        });
+
+        async function joinMeeting(meetingId) {
+            try {
+                socket.emit('join_meeting', { meetingId });
+                meetingIdInput.value = '';
+            } catch (error) {
+                showStatus('Failed to join meeting: ' + error.message, 'error');
+            }
+        }
+
+        socket.on('meeting_joined', (data) => {
+            currentMeetingId = data.meetingId;
+            activeMeeting.style.display = 'block';
+            meetingIdSpan.textContent = data.meetingId;
+            showStatus(`Joined meeting with ${data.teacherName}`, 'success');
+            
+            // Switch to emotions tab
+            const emotionsTab = document.getElementById('emotions-tab');
+            const tab = new bootstrap.Tab(emotionsTab);
+            tab.show();
+        });
+
+        socket.on('error', (data) => {
+            showStatus(data.message, 'error');
+        });
+
+        async function toggleDetection() {
+            try {
+                if (!isDetecting) {
+                    // Request camera access
+                    videoStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            frameRate: { ideal: 30 }
+                        }
+                    });
+
+                    // Set video source and show video
+                    videoElement.srcObject = videoStream;
+                    await videoElement.play();
+                    videoContainer.style.display = 'block';
+                    emotionList.style.display = 'block';
+                    
+                    // Start emotion detection
+                    socket.emit('start_detection');
+                    startEmotionDetection();
+                    
+                    toggleButton.textContent = 'Stop Detection';
+                    showStatus('Emotion detection started', 'success');
+                    isDetecting = true;
+                } else {
+                    // Stop detection
+                    if (videoStream) {
+                        videoStream.getTracks().forEach(track => track.stop());
+                        videoStream = null;
+                    }
+                    
+                    videoElement.srcObject = null;
+                    videoContainer.style.display = 'none';
+                    emotionList.style.display = 'none';
+                    
+                    socket.emit('stop_detection');
+                    toggleButton.textContent = 'Start Detection';
+                    showStatus('Emotion detection stopped', 'info');
+                    isDetecting = false;
+
+                    // Reset emotion display
+                    document.getElementById('current-emotion').textContent = 'Not detected';
+                    document.getElementById('current-emotion').className = '';
+                    ['happy', 'sad', 'angry', 'surprised'].forEach(emotion => {
+                        document.getElementById(`${emotion}_score`).style.width = '0%';
+                        document.getElementById(`${emotion}_percentage`).textContent = '0%';
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus('Error: Could not access camera. Please check permissions.', 'error');
+                isDetecting = false;
+            }
+        }
+
+        function startEmotionDetection() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            function detectEmotions() {
+                if (!isDetecting) return;
+                
+                const now = Date.now();
+                if (now - lastDetectionTime < DETECTION_INTERVAL) {
+                    requestAnimationFrame(detectEmotions);
+                    return;
+                }
+                lastDetectionTime = now;
+                
+                // Set canvas size to match video
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                
+                // Draw current video frame to canvas
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                
+                // Get frame data as base64
+                const frame = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // Send frame to server for emotion detection
+                fetch('/detect_emotions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ frame: frame })
+                })
+                .then(response => response.json())
+                .then(emotions => {
+                    if (!emotions.error) {
+                        updateEmotionDisplay(emotions);
+                        if (currentMeetingId) {
+                            socket.emit('student_emotion_update', {
+                                meeting_id: currentMeetingId,
+                                emotions: emotions
+                            });
+                        }
+                    }
+                })
+                .catch(error => console.error('Error:', error))
+                .finally(() => {
+                    if (isDetecting) {
+                        requestAnimationFrame(detectEmotions);
+                    }
+                });
+            }
+            
+            detectEmotions();
+        }
+
+        function updateEmotionDisplay(emotions) {
+            const currentEmotion = document.getElementById('current-emotion');
+            
+            // Update emotion bars and percentages
+            for (const [emotion, score] of Object.entries(emotions)) {
+                const emotionLower = emotion.toLowerCase();
+                const scoreElement = document.getElementById(`${emotionLower}_score`);
+                const percentageElement = document.getElementById(`${emotionLower}_percentage`);
+                
+                if (scoreElement && percentageElement) {
+                    const percentage = Math.round(score * 100);
+                    scoreElement.style.width = `${percentage}%`;
+                    percentageElement.textContent = `${percentage}%`;
+                }
+            }
+            
+            // Find dominant emotion
+            let maxEmotion = 'Neutral';
+            let maxScore = 0.2; // Threshold for neutral
+            
+            for (const [emotion, score] of Object.entries(emotions)) {
+                if (score > maxScore) {
+                    maxScore = score;
+                    maxEmotion = emotion;
+                }
+            }
+            
+            // Update current emotion display
+            currentEmotion.textContent = maxEmotion;
+            currentEmotion.className = maxEmotion.toLowerCase();
+        }
+
+        function showStatus(message, type = '') {
+            statusMessage.textContent = message;
+            statusMessage.className = type;
+        }
+
+        // Event listeners
+        toggleButton.addEventListener('click', toggleDetection);
+        leaveMeetingBtn.addEventListener('click', () => {
+            if (currentMeetingId) {
+                socket.emit('leave_meeting', { meetingId: currentMeetingId });
+                currentMeetingId = null;
+                activeMeeting.style.display = 'none';
+                meetingIdSpan.textContent = 'Not in a meeting';
+                if (isDetecting) {
+                    toggleDetection();
+                }
+                showStatus('Left meeting', 'info');
+            }
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (isDetecting) {
+                toggleDetection();
+            }
+            if (currentMeetingId) {
+                socket.emit('leave_meeting', { meetingId: currentMeetingId });
+            }
+        });
+    </script>
+</body>
+</html>
